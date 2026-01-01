@@ -99,24 +99,73 @@ TODO: 前端内容不了解，需要一定的调研。
 
 
 
-## 技术栈
-- uv: 使用uv开发，
-- python: 3.12.x 
-- fastapi: 
-- sse: 
-- React+Next.js
-- langchin: 1.1.0+,相关资料: https://docs.langchain.com/oss/python/langchain/overview
-- langGraph: 1.0.0+, 相关资料: https://docs.langchain.com/oss/python/langgraph/overview
-- sqlmodel: 数据库ORM
-- python原生日志: 所有的日志都直接使用python的原生日记进行记录，日记内容至少包括: 当前时间,输入输出,
-- 大模型运营商: siliconflow
-- 模型配置: 全部统一为openAI格式，
-- 使用PyMuPDF进行 核心PDF处理
-- 使用siliconflow的deepseek-ai/DeepSeek-OCR进行OCR技术的支持。
-- 使用 Whoosh + Jieba 做全文检索和搜索引擎
-- 前端使用 React PDF 来做前端PDF阅读器与交互
-- 翻译模块暂时使用: Google Translate API
-- 使用MinIO做对象存储。
+## 技术栈总览
+
+> 基于 `uv` 构建的 AI 文档知识库项目一站式技术清单
+
+---
+
+### 1. 后端
+| 组件 | 版本/说明 | 作用 |
+|---|---|---|
+| Python | ≥3.12.x | 主语言 |
+| uv | latest | 包管理 + 虚拟环境 + 构建（替代 pip/poetry） |
+| FastAPI | latest | 异步 Web 框架，自动生成 Swagger |
+| Uvicorn | latest | ASGI 服务器 |
+| sse-starlette | latest | SSE 流式输出 |
+| psycopg2-binary | latest | PostgreSQL 驱动 |
+| sqlmodel | latest | ORM，与 Pydantic 无缝集成 |
+| PyJWT | latest | JWT 签发/校验 |
+| httpx | latest | 异步 HTTP 客户端 |
+| Python logging | stdlib | 统一日志格式：时间戳｜输入｜输出｜异常 |
+
+---
+
+### 2. 前端
+| 组件 | 版本/说明 | 作用 |
+|---|---|---|
+| React + Next.js | latest | SSR/SSG、文件式路由、全栈一体 |
+| React PDF | latest | 前端 PDF 阅读器，支持标注与高亮 |
+
+---
+
+### 3. AI / ML
+| 组件 | 版本/说明 | 作用 |
+|---|---|---|
+| LangChain | ≥1.1.0 | LLM 编排：Chain、Memory、Tool |
+| LangGraph | ≥1.0.0 | 图结构多 Agent 工作流 |
+| SiliconFlow | — | 大模型运营商，统一 OpenAI-Compatible API |
+| DeepSeek-OCR | siliconflow 模型 | 扫描件文字识别 |
+| Google Translate API | — | 过渡版翻译模块 |
+
+---
+
+### 4. 数据与检索
+| 组件 | 版本/说明 | 作用 |
+|---|---|---|
+| PostgreSQL | ≥15 | 主关系型数据库 |
+| Redis | 7.x | 缓存、分布式锁、SSE 会话 |
+| Neo4j | latest | 图数据库，知识图谱 |
+| Whoosh + Jieba | latest | 纯 Python 全文检索 + 中文分词 |
+
+---
+
+### 5. 基础设施
+| 组件 | 版本/说明 | 作用 |
+|---|---|---|
+| MinIO | latest | 兼容 S3 的对象存储（PDF/图片/模型） |
+| Docker | — | 容器化部署 |
+
+---
+
+### 6. 工具链
+| 组件 | 版本/说明 | 作用 |
+|---|---|---|
+| uv | latest | 极速依赖管理、构建、发布 |
+| Ruff | latest | Rust 级代码检查/格式化 |
+| Git + GitHub Actions | — | CI/CD，可复现构建（基于 `uv.lock`） |
+
+---
 
 ## 代码编写规范
 1. 所有的功能模块都应该使用日志
@@ -136,6 +185,7 @@ TODO: 前端内容不了解，需要一定的调研。
         [开发时间:开发版本:用一句话大概描述下输入,输出,效果,实现,可以在什么地方使用?]
     '''
 9. 如果一个模块打算废弃，使用 废弃的注解标志，并提交废弃申请记录，供MasterAgent或人类审核。 
+10. 后端项目始终使用模块化导包而非相对位置导包，若不清楚模块内容，查看pyproject.toml
 
 ## 代码结构
 \main
@@ -201,6 +251,44 @@ TODO: 前端内容不了解，需要一定的调研。
 
 #### 基础的论文辅助功能。
 1. 第一个功能就是可靠的数据源的查询和外部加载，现代论文主要以PDF文件为核心，并且具有一定的领域性质，也就是说，论文的可发布区域有限制，因此我们首先要支持不同来源的论文获取。
+
+    v0.1 论文来源获取（Paper Ingest）约束与调研结论（作为后端实现依据）：
+    1. 支持来源类型（v0.1 必须）：
+        - 本地 PDF 上传：用户直接上传 PDF 文件。
+        - URL 导入：
+            - URL 指向 PDF（以 Content-Type/扩展名/魔数校验综合判定）。
+            - URL 指向网页（HTML）：服务端做“尽力而为”的 PDF 链接提取（解析 a[href]，收集候选 PDF 链接）；无法提取时返回明确错误。
+    2. 能力边界（v0.1 明确不做）：
+        - 需要登录/鉴权/付费墙的站点；强反爬（频繁验证码/动态签名）站点。
+        - 依赖复杂 JS 渲染才能拿到 PDF 链接的页面（无 headless 浏览器）。
+        - 批量抓取与站点级爬虫策略（robots、速率控制策略细化）留到后续版本。
+    3. 安全与合规约束：
+        - 严格限制可访问的 URL 协议（仅 http/https），禁止 file://、ftp:// 等。
+        - 必须进行 SSRF 防护：禁止访问内网/本机地址段、禁止解析到私有网段（含重定向链路校验）。
+        - 下载与上传均需大小上限（默认建议 50MB，可配置），超限直接失败。
+        - PDF 校验：至少校验文件头魔数 %PDF-；不解析/执行 PDF 内脚本；后续 OCR/解析模块与 ingest 解耦。
+    4. 数据一致性与去重：
+        - 保存文件前计算 sha256（或等价强散列）用于去重；同 sha256 的 PDF 只存一份，来源记录可多条。
+        - 任何一次导入都必须生成可追踪的任务 ID（ingest_id），并记录状态流转。
+    5. 状态机（建议）：
+        - PENDING -> FETCHING/UPLOADING -> STORED -> (LINKED) 或 FAILED
+        - FAILED 必须携带 error_code（稳定枚举）与 error_message（可读信息，避免泄露内部细节）。
+    6. 存储策略（v0.1）：
+        - 以“对象存储引用”为抽象：storage_backend + storage_key。
+        - v0.1 可先落地 LocalFS（开发环境）或 MinIO（二选一），但数据库层必须只存引用，不直接存大文件二进制。
+    7. API 草案（v0.1 controller 对外能力，以任务驱动）：
+        - POST /api/papers/ingest/upload
+            - 入参: multipart/form-data(file: PDF, filename)
+            - 出参: { ingest_id, paper_id?(可选), status }
+        - POST /api/papers/ingest/url
+            - 入参: { url: string }
+            - 出参: { ingest_id, paper_id?(可选), status, candidates?(当网页提取到多个 PDF) }
+        - GET /api/papers/ingest/{ingest_id}
+            - 出参: { ingest_id, paper_id?, status, error_code?, error_message? }
+    8. 数据模型草案（v0.1，SQLModel）：
+        - papers: 论文主表（id、sha256(unique)、storage_backend、storage_key、size_bytes、mime_type、created_at、updated_at、status）。
+        - paper_sources/ingest_jobs: 来源/任务表（id、paper_id(nullable)、source_type、source_url(nullable)、original_filename(nullable)、status、error_code、error_message、created_at、updated_at）。
+        - 关键索引: papers.sha256 unique；ingest_jobs.status + created_at（便于清理与排队）；source_url 可选索引用于追踪。
 
 2. 用户在获取完成论文来源后，面对大量的论文数据，一定会有检索需求，因此我们需要打造一个强大的现代化的，筛选搜索功能。
 

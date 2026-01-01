@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: backend
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.128.0
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: langchain>=1.2.0
+Requires-Dist: langgraph>=1.0.5
+Requires-Dist: neo4j>=6.0.3
+Requires-Dist: psycopg2-binary>=2.9.11
+Requires-Dist: pyjwt>=2.10.1
+Requires-Dist: redis>=7.1.0
+Requires-Dist: sqlmodel>=0.0.31
+Requires-Dist: sse-starlette>=3.1.2
+Requires-Dist: uvicorn>=0.40.0
+
+---
+name: 后端说明文档
+description: |
+    该文档是该项目使用后端的说明文档。
+    该项目的后端是基于FastAPI构建的，使用Python作为后端语言。
+    当你需要开始使用后端时，你可以阅读该文档以快速启动后端项目
+    未完成
+author: "lxz"
+state: TODO
+created: 2026-01-01
+path: "/main/src/backend/"
+---
