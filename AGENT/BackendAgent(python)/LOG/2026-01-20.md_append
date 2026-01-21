@@ -1,0 +1,11 @@
+
+## 21:52 Collections Module Enhancement
+- **目标**: 完善收藏夹模块以符合 `项目统一技术架构文档(重要).md` 规范。
+- **变更范围**:
+  - 修改 `src/controller/api/collections/schema.py`: 响应模型增加 `total` 字段，ID别名为 `collection_id`。
+  - 修改 `src/base/pg/service.py`: 增加 `get_user_collections_with_counts` 和 `remove_paper_from_user_collections` 方法。
+  - 修改 `src/service/collections/collection_service.py`: 实现 `move_paper` 逻辑，列表查询增加计数。
+  - 修改 `src/controller/api/collections/router.py`: 更新接口改为 `PATCH`。
+  - 修改 `src/controller/api/papers/router.py`: 新增 `PATCH /move/{paper_id}` 接口。
+- **验证方式**: 更新并运行 `test/src/test_collections_router.py` 和 `test/src/test_papers_router.py`。
+- **结果**: 所有测试通过，功能符合架构文档要求。

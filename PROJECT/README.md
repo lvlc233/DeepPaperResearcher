@@ -13,9 +13,11 @@ path: "/PROJECT"
 
 # 结构
 ├── PROJECT/
-│   ├── MEMORY/             # agent的记忆,agent可以调度该目录下的所有资源，回忆关于自己的所有事情。
-│   ├── OPERATION_LOG/      # agent的操作日志,一般来说Agent只需获取最近若干天的操作记录即可。
-│   └── SANDBOX/            # agent的沙盒环境 Agent的所有代码开发都应该放置在该资源下。
+│   ├── SPECIFICATION.md    # 项目规格文档,该文档描述了项目的基础规范，Agent在进行项目开发时必须遵守。
+│   ├── TASK_METRICS.md     # 项目任务指标,该文档描述了项目的任务指标，一般需要管理员进行维护。
+|   ├── LOG.md              # 项目操作日志,该文档记录了项目的所有操作记录，一般记录项目本身的进度日志。用于辅助Agent理解当前项目的状态和隔离任务
+|   ├── PRODUCT.md          # 产品需求。
+|   └── DOCUMENT/           # 在项目进行过程中积累的有效文档。
 
 # 详情
 PROJECT(或类似于的内容): 

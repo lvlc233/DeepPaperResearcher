@@ -2,6 +2,12 @@
 ## 介绍
 这是一个基于Langgraph的DeepAgent项目，该项目旨在利用强大的Agent编排，上下文工程和资源管理技术，为任意的研究人员提供更好的Agent服务，降低研究人员的研发过程中的心智负担，全身心的投入在有价值的内容产出中。
 
+> **注意**: 本文档提供高层次的项目指导。
+> - 详细的技术实现、架构设计，请参考 [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)。
+> - 前后端交互的 API 契约，请参考 [FRONTEND_TO_BACKEND_API_REQ.md](DOCUMENTS/FRONTEND_TO_BACKEND_API_REQ.md)。
+>
+> 所有开发工作应以这些文档为事实来源。
+
 
 ## 项目架构
 ### 后端
@@ -93,9 +99,28 @@ Agent测试内容包括3个部分，并以节点和工具为单位。
 
 
 ### 前端
-1. 使用config专门处理url连接等配置项
-2. 使用专门的service进行后端数据连接并进行数据转化
-TODO: 前端内容不了解，需要一定的调研。
+1. **架构与框架**:
+    - 采用 **Next.js 14 (App Router)** 架构，充分利用 Server Components 进行性能优化。
+    - 核心语言: **TypeScript 5+**，强制开启严格模式。
+    - 路由策略: 基于文件系统的路由 (File-system based routing)，遵循 `src/app` 目录结构。
+
+2. **UI/UX 设计体系**:
+    - 样式引擎: **Tailwind CSS**，实现原子化、可响应的样式开发。
+    - 组件库: 基于 **Radix UI** (Headless UI) + **Shadcn/UI** 的自建组件体系，确保可定制性与无障碍访问 (A11y)。
+    - 图标库: 使用 **Lucide React**。
+
+3. **核心功能模块实现**:
+    - **PDF 阅读**: 集成 `react-pdf` 和 `pdfjs-dist` 实现高性能 PDF 渲染与交互。
+    - **知识图谱**: 使用 `reagraph` (WebGL) 进行大规模知识节点的 2D/3D 可视化展示。
+    - **AI 交互**: 集成 **Vercel AI SDK (`ai`)** 处理流式对话 (Streaming) 和 LLM 工具调用，支持 Server-Sent Events (SSE)。
+
+4. **状态管理与数据流**:
+    - **客户端状态**: 使用 **Zustand** 管理轻量级全局状态 (如 UI 开关、用户会话、阅读器配置)。
+    - **服务端数据**: 优先使用 Next.js Server Actions 与 Server Components Fetching；统一封装请求层处理拦截与错误映射。
+
+5. **配置与环境**:
+    - 使用 `next.config.mjs` 处理构建配置。
+    - 环境变量通过 `.env` 管理，禁止硬编码敏感信息。
 
 
 
@@ -124,8 +149,15 @@ TODO: 前端内容不了解，需要一定的调研。
 ### 2. 前端
 | 组件 | 版本/说明 | 作用 |
 |---|---|---|
-| React + Next.js | latest | SSR/SSG、文件式路由、全栈一体 |
-| React PDF | latest | 前端 PDF 阅读器，支持标注与高亮 |
+| Next.js | 14+ (App Router) | 全栈框架，路由与SSR |
+| TypeScript | 5.x | 静态类型系统 |
+| TailwindCSS | latest | 原子化样式引擎 |
+| Shadcn/UI | latest | 基于 Radix UI 的组件库 |
+| React PDF | latest | PDF 渲染引擎 |
+| Reagraph | latest | 知识图谱可视化 (WebGL) |
+| Vercel AI SDK | latest | AI 流式对话与工具调用 |
+| TanStack Query | v5 | 服务端状态管理 |
+| Zustand | latest | 客户端全局状态管理 |
 
 ---
 
@@ -167,7 +199,7 @@ TODO: 前端内容不了解，需要一定的调研。
 
 ---
 
-## 代码编写规范
+## 代码编写规范(重要)
 1. 所有的功能模块都应该使用日志
 2. 所有的代码模块都必须记录完整的日记，
 3. 设置时间区域为中国上海
@@ -179,16 +211,36 @@ TODO: 前端内容不了解，需要一定的调研。
     '''
     开发者: agent_name/ human_name
     当前版本: 任何一个在该模块不重复的标记
-    创建时间: 使用YYYY-MM-DD格式,Agent使用Time工具获取当前时间
-    更新时间: 使用YYYY-MM-DD格式,Agent使用Time工具获取当前时间
+    创建时间: 使用YYYY-MM-DD 时:分格式,Agent使用Time工具获取当前时间
+    更新时间: 使用YYYY-MM-DD 时:分格式,Agent使用Time工具获取当前时间
     更新记录: 
         [开发时间:开发版本:用一句话大概描述下输入,输出,效果,实现,可以在什么地方使用?]
     '''
 9. 如果一个模块打算废弃，使用 废弃的注解标志，并提交废弃申请记录，供MasterAgent或人类审核。 
 10. 后端项目始终使用模块化导包而非相对位置导包，若不清楚模块内容，查看pyproject.toml
+11. 管理员会使用TODO和Agent进行交流,例如提出问题或者指出修改建议,在完成了相关TODO的时候记得移除相关TODO的标记,它们通常是一次性的。若有必要,可以将TODO的交流/解决记录改为注释。
+
+## 数据模型设计规范（SaaS化哲学）(重要)
+> 核心原则：数据模型即业务边界。模型是模块间交互的契约，而非全局共享的数据容器。
+
+1. **显式契约 (Explicit Contracts)**
+   - 任何功能模块（Module/Service/Function）必须显式定义其 `Input` 和 `Output` 模型（通常使用 Pydantic BaseModel 或 TypedDict）。
+   - 禁止使用 `dict` 或 `Any` 作为公开接口的参数或返回值，必须强类型化。
+
+2. **禁止透传 (No Pass-through)**
+   - **数据库实体隔离**：Dao 层的数据库实体（Entity, 如 `UserORM`）**严禁**直接作为 Controller 层的 Response 输出。必须在 Service 层转换为业务模型（DTO）。
+   - **层级解耦**：Web 层的 Request/Response 模型仅在 Controller 层可见。Service 层的 Input/Output 模型仅在 Service 层及调用者间可见。
+
+3. **模型下沉 (Colocation)**
+   - 推荐将特定模块使用的模型定义在模块内部（如 `modules/paper/schema.py`），而非全部堆积在全局的 `common/models`。
+   - 仅当模型在多个完全不相关的模块间复用时，才放入 `common` 包。
+
+4. **SaaS 化思维**
+   - 开发任何模块时，将其视为一个独立的 SaaS 服务。
+   - 问自己：如果我要把这个模块拆分成微服务，我的输入输出是否足够清晰？
 
 ## 代码结构
-\main
+main
 └── backend/                                  # 后端（基于 FastAPI + Python）
     ├── .env                                  # 环境变量（未开始）
     ├── .env.template                         # 环境变量模板（未开始）
@@ -244,71 +296,22 @@ TODO: 前端内容不了解，需要一定的调研。
         │   └── README.md                      # 评估评测开发流程说明（未完成）
         └── src/                               # 传统后端单元测试
             └── README.md
+└── frontend/                                   # 前端（基于 Next.js 14+）
+    ├── src/
+    │   ├── app/                                # 路由层 (App Router)
+    │   │   ├── (dashboard)/                    # 主应用区 (Layout)
+    │   │   │   ├── graph/                      # 知识图谱页
+    │   │   │   ├── library/                    # 论文管理页
+    │   │   │   └── reader/[id]/                # 阅读器页
+    │   │   └── api/                            # API Routes (AI SDK 转发)
+    │   ├── components/
+    │   │   ├── ui/                             # Shadcn 基础组件
+    │   │   ├── graph/                          # Reagraph 封装组件
+    │   │   ├── pdf/                            # PDF 核心组件 (react-pdf)
+    │   │   └── ai/                             # 聊天/流式反馈组件
+    │   └── lib/
+    │       └── ai/                             # AI SDK 配置与工具
 
-## 功能需求(从产品的角度思考)
-### 0.1(当前版本)
-这里是一个 `+AI` 的项目，意思就是说，该该项目希望在原本的论文管理和阅读工具或平台的基础上引入Agent系统作为辅助，与此同时我们的项目需要轻量级，以此里减轻用户的使用负担和学习成本。因此我们的系统应该覆盖传统论文管理和阅读工具的核心功能并再次基础上融合Agent的能力。
-
-#### 基础的论文辅助功能。
-1. 第一个功能就是可靠的数据源的查询和外部加载，现代论文主要以PDF文件为核心，并且具有一定的领域性质，也就是说，论文的可发布区域有限制，因此我们首先要支持不同来源的论文获取。
-
-    v0.1 论文来源获取（Paper Ingest）约束与调研结论（作为后端实现依据）：
-    1. 支持来源类型（v0.1 必须）：
-        - 本地 PDF 上传：用户直接上传 PDF 文件。
-        - URL 导入：
-            - URL 指向 PDF（以 Content-Type/扩展名/魔数校验综合判定）。
-            - URL 指向网页（HTML）：服务端做“尽力而为”的 PDF 链接提取（解析 a[href]，收集候选 PDF 链接）；无法提取时返回明确错误。
-    2. 能力边界（v0.1 明确不做）：
-        - 需要登录/鉴权/付费墙的站点；强反爬（频繁验证码/动态签名）站点。
-        - 依赖复杂 JS 渲染才能拿到 PDF 链接的页面（无 headless 浏览器）。
-        - 批量抓取与站点级爬虫策略（robots、速率控制策略细化）留到后续版本。
-    3. 安全与合规约束：
-        - 严格限制可访问的 URL 协议（仅 http/https），禁止 file://、ftp:// 等。
-        - 必须进行 SSRF 防护：禁止访问内网/本机地址段、禁止解析到私有网段（含重定向链路校验）。
-        - 下载与上传均需大小上限（默认建议 50MB，可配置），超限直接失败。
-        - PDF 校验：至少校验文件头魔数 %PDF-；不解析/执行 PDF 内脚本；后续 OCR/解析模块与 ingest 解耦。
-    4. 数据一致性与去重：
-        - 保存文件前计算 sha256（或等价强散列）用于去重；同 sha256 的 PDF 只存一份，来源记录可多条。
-        - 任何一次导入都必须生成可追踪的任务 ID（ingest_id），并记录状态流转。
-    5. 状态机（建议）：
-        - PENDING -> FETCHING/UPLOADING -> STORED -> (LINKED) 或 FAILED
-        - FAILED 必须携带 error_code（稳定枚举）与 error_message（可读信息，避免泄露内部细节）。
-    6. 存储策略（v0.1）：
-        - 以“对象存储引用”为抽象：storage_backend + storage_key。
-        - v0.1 可先落地 LocalFS（开发环境）或 MinIO（二选一），但数据库层必须只存引用，不直接存大文件二进制。
-    7. API 草案（v0.1 controller 对外能力，以任务驱动）：
-        - POST /api/papers/ingest/upload
-            - 入参: multipart/form-data(file: PDF, filename)
-            - 出参: { ingest_id, paper_id?(可选), status }
-        - POST /api/papers/ingest/url
-            - 入参: { url: string }
-            - 出参: { ingest_id, paper_id?(可选), status, candidates?(当网页提取到多个 PDF) }
-        - GET /api/papers/ingest/{ingest_id}
-            - 出参: { ingest_id, paper_id?, status, error_code?, error_message? }
-    8. 数据模型草案（v0.1，SQLModel）：
-        - papers: 论文主表（id、sha256(unique)、storage_backend、storage_key、size_bytes、mime_type、created_at、updated_at、status）。
-        - paper_sources/ingest_jobs: 来源/任务表（id、paper_id(nullable)、source_type、source_url(nullable)、original_filename(nullable)、status、error_code、error_message、created_at、updated_at）。
-        - 关键索引: papers.sha256 unique；ingest_jobs.status + created_at（便于清理与排队）；source_url 可选索引用于追踪。
-
-2. 用户在获取完成论文来源后，面对大量的论文数据，一定会有检索需求，因此我们需要打造一个强大的现代化的，筛选搜索功能。
-
-3. 之后我们的研究者就要开始阅读论文，那首先我们需要给研究者阅读论文的辅助工具，首先是基础的pdf加载，之后我们需要有文字识别，图表识别和公式识别等功能，并且拥有备注，高光划线等经典文档处理操作。
-
-4. 由于这些附加的额外操作并不能作用于PDF上，这样子会破坏原资料。因此需要一个类似于一个视图的概念，将一个记录视为不同的视图。从而存储切换合并视图，也方便系统做存储。
-
-5. 然后我们需要提供多语言翻译功能。(暂时只做中英文吧)
-
-6. 之后我们需要提供一个系统内的论文存储，让用户可以持久化收集到的论文，或者说保存论文数据到系统中。以便用户快捷的进行操作。 
-#### AI功能支持
-1. 由于论文的阅读需要大量的专业知识和专业术语，对于研究者的负担就比较大，因此需要AI分析论文中的专业术语并生成特定的解释和可信任来源(确保AI的概念是正确的)
-
-2. 基于概念1. 用户也可以动态的注入自己的专业知识，并对AI说的内容进行更正，因此需要记忆的功能。
-
-3. 之后要进行项目的总结，以便用户可以快速的把握论文的重点和核心内容。
-
-4. AI需要持续的关注研究人员的研究进度，深度的追踪研究方向，一篇论文往往是不够的，且具有局限性的，因此AI需要学会自己探索整个系统的相关资料并构建起相关的知识体系以辅助研究者进行研究。
-
-暂时就这些。
 
 
 
